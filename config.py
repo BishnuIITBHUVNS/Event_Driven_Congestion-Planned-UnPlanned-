@@ -1,22 +1,20 @@
 """
 config.py — All constants in one place.
-Edit paths here if you move files.
+Paths are set for FLAT repo structure (all files at root).
 """
 from pathlib import Path
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
-ROOT        = Path(__file__).resolve().parent.parent
-DATA_RAW    = ROOT / "data" / "raw"   / "events.csv"
-DATA_PROC   = ROOT / "data" / "processed" / "events_features.csv"
-MODEL_DIR   = ROOT / "models"
+# ── Paths (flat repo — everything sits at the repo root) ──────────────────────
+ROOT      = Path(__file__).resolve().parent   # repo root
+DATA_RAW  = ROOT / "events.csv"               # not needed at deploy time
+DATA_PROC = ROOT / "events_features.csv"      # uploaded to root
+MODEL_DIR = ROOT                              # pkl files are at root too
 
 # ── Timezone ──────────────────────────────────────────────────────────────────
 import pandas as pd
-IST_OFFSET  = pd.Timedelta(hours=5, minutes=30)   # UTC → IST
+IST_OFFSET = pd.Timedelta(hours=5, minutes=30)
 
-# ── Domain severity maps (calibrated from EDA) ────────────────────────────────
-
-# How severe each event_cause is for congestion (0 = none, 5 = critical)
+# ── Domain severity maps ───────────────────────────────────────────────────────
 CAUSE_SEVERITY = {
     "congestion":          5,
     "accident":            5,
@@ -37,7 +35,6 @@ CAUSE_SEVERITY = {
     "test_demo":           0,
 }
 
-# Empirical road-closure probability per cause (from EDA)
 CAUSE_CLOSURE_PROB = {
     "debris":              1.00,
     "Debris":              1.00,
@@ -58,7 +55,6 @@ CAUSE_CLOSURE_PROB = {
     "test_demo":           0.00,
 }
 
-# Congestion impact weight per vehicle type (heavier = bigger blockage)
 VEH_SEVERITY = {
     "heavy_vehicle": 4,
     "truck":         4,
@@ -72,37 +68,19 @@ VEH_SEVERITY = {
     "others":        1,
 }
 
-# ── Feature column list (used in train.py and app.py) ─────────────────────────
 FEATURE_COLS = [
-    # Temporal
     "hour_ist", "day_of_week", "month", "is_weekend",
     "is_morning_rush", "is_evening_rush", "is_peak", "is_night",
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
-    # Event  (requires_road_closure_int REMOVED — it IS the classification target)
     "cause_severity", "cause_closure_prob", "veh_severity",
     "is_planned", "has_vehicle",
-    # Spatial
     "is_named_corridor", "corridor_freq", "zone_priority_rate",
     "has_junction", "dist_from_center_km",
-    # Historical density
     "corridor_density_2h", "zone_density_2h",
 ]
 
-# ── Target ────────────────────────────────────────────────────────────────────
-#
-# NOTE: priority_class is 99.6% determined by is_named_corridor — not a useful
-# ML target. The genuinely hard targets are:
-#
-#   TARGET_CLS = "road_closure_class"  (1 = closure required, 0 = not)
-#                8.3% positive, varies meaningfully by cause & location.
-#                This is the actionable barricading/deployment decision.
-#
-#   TARGET_REG = "log_duration_min"   (log1p of minutes to close)
-#                Available on 38% of rows — more meaningful than a composite.
-#
-TARGET_CLS     = "road_closure_class"   # primary classification target
-TARGET_REG     = "log_duration_min"     # primary regression target
-TARGET_REG_ALT = "impact_score"        # secondary / dashboard display
+TARGET_CLS     = "road_closure_class"
+TARGET_REG     = "log_duration_min"
+TARGET_REG_ALT = "impact_score"
 
-# Bengaluru city center (for distance feature)
 CITY_LAT, CITY_LON = 12.9716, 77.5946
