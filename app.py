@@ -202,7 +202,22 @@ with tab1:
         ap     = st.session_state["all_preds"]
         ap_geo = ap[ap["latitude"].between(12.5, 13.5) & ap["longitude"].between(77.0, 78.0)]
 
-        m = folium.Map(location=[12.97, 77.59], zoom_start=11, tiles="CartoDB positron")
+        selected_corridor = pred["corridor"]
+
+        # Split into selected corridor events and background events
+        corridor_events = ap_geo[ap_geo["corridor"] == selected_corridor]
+        other_events    = ap_geo[ap_geo["corridor"] != selected_corridor]
+
+        # Map centre: zoom to selected corridor if it has events, else Bengaluru centre
+        if len(corridor_events) > 0:
+            map_lat  = corridor_events["latitude"].mean()
+            map_lon  = corridor_events["longitude"].mean()
+            zoom_lvl = 13
+        else:
+            map_lat, map_lon, zoom_lvl = 12.97, 77.59, 11
+
+        m = folium.Map(location=[map_lat, map_lon], zoom_start=zoom_lvl,
+                       tiles="CartoDB positron")
 
         def impact_color(s):
             if s >= 7: return "#dc3545"
@@ -210,20 +225,66 @@ with tab1:
             if s >= 3: return "#ffc107"
             return "#28a745"
 
-        for _, row in ap_geo.sample(min(800, len(ap_geo)), random_state=42).iterrows():
+        # Background events — small, grey, low opacity
+        for _, row in other_events.sample(min(400, len(other_events)), random_state=42).iterrows():
+            folium.CircleMarker(
+                location=[row["latitude"], row["longitude"]],
+                radius=3,
+                color="#aaaaaa",
+                fill=True, fill_opacity=0.25,
+                popup=folium.Popup(
+                    f"{row.get('event_cause','—')}<br>{row.get('corridor','—')}",
+                    max_width=150,
+                ),
+            ).add_to(m)
+
+        # Selected corridor events — bright, sized by impact
+        for _, row in corridor_events.iterrows():
             sc = row.get("impact_score", 0)
             folium.CircleMarker(
                 location=[row["latitude"], row["longitude"]],
-                radius=max(3, sc * 1.2),
+                radius=max(5, sc * 1.8),
                 color=impact_color(sc),
-                fill=True, fill_opacity=0.45,
+                fill=True, fill_opacity=0.75,
+                weight=2,
                 popup=folium.Popup(
                     f"<b>{row.get('event_cause','—')}</b><br>"
-                    f"Corridor: {row.get('corridor','—')}<br>"
-                    f"Score: {sc:.1f}",
+                    f"Corridor: {selected_corridor}<br>"
+                    f"Impact score: {sc:.1f}",
                     max_width=200,
                 ),
             ).add_to(m)
+
+        # New event marker — star pin at corridor centre
+        if len(corridor_events) > 0:
+            folium.Marker(
+                location=[map_lat, map_lon],
+                popup=folium.Popup(
+                    f"<b>New event</b><br>"
+                    f"Cause: {event_cause}<br>"
+                    f"Corridor: {selected_corridor}<br>"
+                    f"Closure: {pred['closure']}<br>"
+                    f"Est. time: {pred['est_minutes']} min",
+                    max_width=220,
+                ),
+                icon=folium.Icon(color="red", icon="star", prefix="fa"),
+                tooltip=f"New event — {selected_corridor}",
+            ).add_to(m)
+
+        # Legend
+        legend_html = """
+        <div style="position:fixed;bottom:30px;left:40px;z-index:1000;
+                    background:white;padding:10px 14px;border-radius:8px;
+                    border:1px solid #ccc;font-size:12px;line-height:1.8">
+            <b>Impact score</b><br>
+            <span style="color:#dc3545">●</span> Critical (≥7)<br>
+            <span style="color:#fd7e14">●</span> High (5–7)<br>
+            <span style="color:#ffc107">●</span> Medium (3–5)<br>
+            <span style="color:#28a745">●</span> Low (&lt;3)<br>
+            <span style="color:#aaaaaa">●</span> Other corridors<br>
+            <span style="color:#dc3545">★</span> New event
+        </div>"""
+        m.get_root().html.add_child(folium.Element(legend_html))
 
         st_folium(m, width=None, height=500, returned_objects=[])
 
