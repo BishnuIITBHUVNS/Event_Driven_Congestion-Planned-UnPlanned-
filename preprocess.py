@@ -31,9 +31,9 @@ from config import (
     CITY_LAT, CITY_LON, FEATURE_COLS, TARGET_CLS, TARGET_REG,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 1. LOAD
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def load_raw(path=DATA_RAW) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -41,9 +41,9 @@ def load_raw(path=DATA_RAW) -> pd.DataFrame:
     return df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 2. DATETIMES + DURATION
-# ─────────────────────────────────────────────────────────────────────────────
+# ─------------------------------------------------------------------------------
 
 def parse_datetimes(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -75,6 +75,8 @@ def parse_datetimes(df: pd.DataFrame) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. TEMPORAL FEATURES
 # ─────────────────────────────────────────────────────────────────────────────
+
+
 
 def add_temporal(df: pd.DataFrame) -> pd.DataFrame:
     dt = df["start_ist"]
@@ -142,13 +144,13 @@ def add_spatial(df: pd.DataFrame) -> pd.DataFrame:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. HISTORICAL DENSITY
-#    How many events happened in the same corridor / zone in the 2 hours
+#    How many events happened in the same corridor/zone in the 2 hours
 #    before this event? This is the "congestion memory" signal.
 # ─────────────────────────────────────────────────────────────────────────────
 
 def add_historical_density(df: pd.DataFrame, window_hours: int = 2) -> pd.DataFrame:
     """
-    O(n²) in the worst case but tractable at 8k rows.
+    O(n²) in the worst case, but tractable at 8k rows.
     For production use a groupby + rolling approach.
     """
     df = df.sort_values("start_datetime").reset_index(drop=True)
