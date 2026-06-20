@@ -336,18 +336,18 @@ with tab1:
         # position:fixed legends inside folium maps often fail to render in
         # streamlit-folium because the map lives in a sandboxed iframe — this
         # approach renders directly on the page instead, so it always shows up.
-        st.markdown("""
+         st.markdown("""
         <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;
-                    background:var(--background-color, #f0f2f6); padding:10px 16px;
+                    background:#f0f2f6; padding:10px 16px;
                     border-radius:8px; border:1px solid #ddd; margin-bottom:8px;
-                    font-size:13px;">
-            <b style="margin-right:4px;">Severity:</b>
-            <span><span style="color:#dc3545; font-size:16px;">●</span> Critical (≥7)</span>
-            <span><span style="color:#fd7e14; font-size:16px;">●</span> High (5–7)</span>
-            <span><span style="color:#ffc107; font-size:16px;">●</span> Medium (3–5)</span>
-            <span><span style="color:#28a745; font-size:16px;">●</span> Low (&lt;3)</span>
-            <span><span style="color:#aaaaaa; font-size:16px;">●</span> Other corridors</span>
-            <span><span style="color:#dc3545; font-size:16px;">★</span> New event location</span>
+                    font-size:13px; color:#1a1a1a;">
+            <b style="margin-right:4px; color:#1a1a1a;">Severity:</b>
+            <span style="color:#1a1a1a;"><span style="color:#dc3545; font-size:16px;">●</span> Critical (≥7)</span>
+            <span style="color:#1a1a1a;"><span style="color:#fd7e14; font-size:16px;">●</span> High (5–7)</span>
+            <span style="color:#1a1a1a;"><span style="color:#ffc107; font-size:16px;">●</span> Medium (3–5)</span>
+            <span style="color:#1a1a1a;"><span style="color:#28a745; font-size:16px;">●</span> Low (&lt;3)</span>
+            <span style="color:#1a1a1a;"><span style="color:#aaaaaa; font-size:16px;">●</span> Other corridors</span>
+            <span style="color:#1a1a1a;"><span style="color:#dc3545; font-size:16px;">★</span> New event location</span>
         </div>
         """, unsafe_allow_html=True)
 
