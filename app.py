@@ -235,8 +235,8 @@ with tab1:
                     0.5 * models["xgb_reg"].predict(X_c) +
                     0.5 * models["lgb_reg"].predict(X_c), 0, None,
                 )[0])
-                p_c = float(0.5 * models["xgb_clf"].predict_proba(X_c)[:, 1] +
-                           0.5 * models["lgb_clf"].predict_proba(X_c)[:, 1])
+                p_c = float((0.5 * models["xgb_clf"].predict_proba(X_c)[:, 1] +
+                           0.5 * models["lgb_clf"].predict_proba(X_c)[:, 1])[0])
                 sweep_rows.append({"cause": c, "impact_score": r_c, "closure_proba": p_c})
 
             sweep_df = pd.DataFrame(sweep_rows).sort_values("impact_score", ascending=True)
