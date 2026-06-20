@@ -336,7 +336,7 @@ with tab1:
         # position:fixed legends inside folium maps often fail to render in
         # streamlit-folium because the map lives in a sandboxed iframe — this
         # approach renders directly on the page instead, so it always shows up.
-         st.markdown("""
+        st.markdown("""
         <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;
                     background:#f0f2f6; padding:10px 16px;
                     border-radius:8px; border:1px solid #ddd; margin-bottom:8px;
