@@ -4,17 +4,17 @@ Paths are set for FLAT repo structure (all files at root).
 """
 from pathlib import Path
 
-# ── Paths (flat repo — everything sits at the repo root) ──────────────────────
+# - Paths (flat repo — everything sits at the repo root)
 ROOT      = Path(__file__).resolve().parent   # repo root
 DATA_RAW  = ROOT / "events.csv"               # not needed at deploy time
 DATA_PROC = ROOT / "events_features.csv"      # uploaded to root
 MODEL_DIR = ROOT                              # pkl files are at root too
 
-# ── Timezone ──────────────────────────────────────────────────────────────────
+# ─ Timezone 
 import pandas as pd
 IST_OFFSET = pd.Timedelta(hours=5, minutes=30)
 
-# ── Domain severity maps ───────────────────────────────────────────────────────
+# ─ Domain severity maps
 CAUSE_SEVERITY = {
     "congestion":          5,
     "accident":            5,
