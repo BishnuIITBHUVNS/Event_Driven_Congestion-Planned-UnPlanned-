@@ -1,7 +1,3 @@
-"""
-app.py — Streamlit dashboard (flat repo structure).
-Run: streamlit run app.py
-"""
 
 import sys
 from pathlib import Path
@@ -23,14 +19,12 @@ from config import (
 )
 from optimizer import aggregate_predictions, allocate
 
-# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="GridLock — Event Congestion Intelligence",
     page_icon="🚦",
     layout="wide",
 )
 
-# ── Load models & data (cached) ───────────────────────────────────────────────
 @st.cache_resource
 def load_models():
     try:
@@ -53,7 +47,7 @@ def load_data():
 models  = load_models()
 df_proc = load_data()
 
-# ── Header ────────────────────────────────────────────────────────────────────
+# ── Header 
 st.title("🚦 GridLock — Event-Driven Congestion Intelligence")
 st.caption("Bengaluru traffic event prediction · Resource optimisation · Diversion planning")
 
@@ -65,7 +59,7 @@ if df_proc is None:
     st.error("❌ events_features.csv not found in repo root.")
     st.stop()
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# ── Sidebar
 with st.sidebar:
     st.header("📋 New Event")
 
@@ -102,12 +96,12 @@ with st.sidebar:
 
     predict_btn = st.button("🔍 Predict & Optimise", use_container_width=True, type="primary")
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
+# ── Tabs
 tab1, tab2, tab3, tab4 = st.tabs([
     "🗺️ Congestion Map", "🚔 Resource Plan", "📊 Model Performance", "🔎 Dataset Explorer"
 ])
 
-# ── Build feature row from sidebar input ──────────────────────────────────────
+# ── Build feature row from sidebar input 
 def build_input_row(event_cause, event_type, veh_type, corridor, zone,
                     road_closure, event_date, event_time):
     dt    = datetime.combine(event_date, event_time)
@@ -148,7 +142,7 @@ def build_input_row(event_cause, event_type, veh_type, corridor, zone,
     feat_cols = models["feature_cols"]
     return pd.DataFrame([row])[feat_cols].fillna(0)
 
-# ── Predict on button click ───────────────────────────────────────────────────
+# ── Predict on button click
 if predict_btn:
     X_input = build_input_row(
         event_cause, event_type, veh_type, corridor, zone,
@@ -186,7 +180,7 @@ if predict_btn:
         road_closure=road_closure, event_date=event_date, event_time=event_time,
     )
 
-    # Run predictions over full dataset for map & optimizer
+    # Run predictions over the full dataset for the map & optimiser
     all_preds = df_proc.copy()
     feat_df   = all_preds[[c for c in feat_cols if c in all_preds.columns]].fillna(0)
     all_preds["impact_score"] = np.clip(
@@ -203,7 +197,7 @@ if predict_btn:
     st.session_state["resource_plan"] = result
     st.session_state["all_preds"]     = all_preds
 
-# ── Tab 1: Congestion Map ─────────────────────────────────────────────────────
+# ── Tab 1: Congestion Map
 with tab1:
     if "prediction" in st.session_state:
         pred = st.session_state["prediction"]
@@ -221,7 +215,7 @@ with tab1:
             f"they don't change with your selection, since they're historical fact, not predictions."
         )
 
-        # ── Proof of cause-sensitivity: sweep every cause, hold everything else fixed ──
+        # ─ Proof of cause-sensitivity: sweep every cause, hold everything else fixed ─
         with st.expander("🔬 See how Event cause alone changes the prediction (same corridor, zone, time)", expanded=True):
             raw = st.session_state["raw_inputs"]
             all_causes = list(CAUSE_SEVERITY.keys())
@@ -333,7 +327,7 @@ with tab1:
             ).add_to(m)
 
         # Legend — rendered as native Streamlit HTML (not inside the folium iframe).
-        # position:fixed legends inside folium maps often fail to render in
+        # position: fixed legends inside folium maps often fail to render in
         # streamlit-folium because the map lives in a sandboxed iframe — this
         # approach renders directly on the page instead, so it always shows up.
         st.markdown("""
@@ -442,7 +436,7 @@ with tab3:
                             labels={"value": "error (pred − actual)"})
         st.plotly_chart(fig2, use_container_width=True)
 
-# ── Tab 4: Dataset Explorer ───────────────────────────────────────────────────
+# ─ Tab 4: Dataset Explorer
 with tab4:
     st.subheader("Raw dataset overview")
     if df_proc is not None:
