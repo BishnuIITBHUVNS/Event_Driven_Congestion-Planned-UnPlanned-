@@ -5,7 +5,7 @@ Given a DataFrame of corridor/zone congestion predictions,
 allocates police personnel and barricades using Google OR-Tools CP-SAT.
 
 Usage (standalone):
-    from src.optimizer import allocate
+    from src. optimiser import allocate
     result_df = allocate(predicted_zones_df, total_personnel=80, total_barricades=40)
 """
 
@@ -49,15 +49,15 @@ def allocate(
     scores    = (zones["impact_score"].fillna(0).values * 100).astype(int).clip(0, 1000)
     ev_counts = (zones.get("event_count", pd.Series([1]*n)).fillna(1).values).astype(int).clip(1)
 
-    # ── Decision variables ────────────────────────────────────────────────────
+    # ─ Decision variables
     p = [model.NewIntVar(0, max_per_zone_p, f"p_{i}") for i in range(n)]
     b = [model.NewIntVar(0, max_per_zone_b, f"b_{i}") for i in range(n)]
 
-    # ── Global capacity constraints ───────────────────────────────────────────
+    # ─ Global capacity constraints 
     model.Add(sum(p) <= total_personnel)
     model.Add(sum(b) <= total_barricades)
 
-    # ── Minimum resources for high-risk zones ────────────────────────────────
+    # ─ Minimum resources for high-risk zones 
     for i in range(n):
         score = zones.at[i, "impact_score"]
         if score >= 7.0:             # critical
@@ -67,7 +67,7 @@ def allocate(
             model.Add(p[i] >= 2)
             model.Add(b[i] >= 1)
 
-    # ── Objective: maximise weighted coverage ────────────────────────────────
+    # ─ Objective: maximise weighted coverage
     # Each unit of resource deployed to zone i earns scores[i] points
     model.Maximize(sum(scores[i] * (p[i] + b[i]) for i in range(n)))
 
@@ -84,7 +84,7 @@ def allocate(
         zones["allocated_personnel"]  = (w * total_personnel).round().astype(int).clip(0, max_per_zone_p)
         zones["allocated_barricades"] = (w * total_barricades).round().astype(int).clip(0, max_per_zone_b)
 
-    # ── Labels ────────────────────────────────────────────────────────────────
+    # ─Labels 
     zones["risk_level"] = pd.cut(
         zones["impact_score"],
         bins=[-0.01, 3, 5, 7, 10.01],
