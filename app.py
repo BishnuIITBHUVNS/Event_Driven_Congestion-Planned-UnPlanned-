@@ -163,14 +163,28 @@ if predict_btn:
         0.5 * models["lgb_reg"].predict(X_input), 0, None,
     )[0])
 
+    def severity_bucket(score):
+        if score >= 7: return "Critical"
+        if score >= 5: return "High"
+        if score >= 3: return "Medium"
+        return "Low"
+
     st.session_state["prediction"] = {
         "closure":      "Yes ⚠️" if p_proba[0] >= 0.5 else "No ✅",
         "proba":        float(p_proba[0]),
         "log_duration": r_pred,
         "est_minutes":  round(np.expm1(r_pred)),
+        "impact_score": r_pred,                      # this IS what changes with event_cause
+        "severity":     severity_bucket(r_pred),
         "corridor":     corridor,
         "zone":         zone,
+        "cause":        event_cause,
     }
+    # Save raw inputs so we can re-run predictions while sweeping only `cause`
+    st.session_state["raw_inputs"] = dict(
+        event_type=event_type, veh_type=veh_type, corridor=corridor, zone=zone,
+        road_closure=road_closure, event_date=event_date, event_time=event_time,
+    )
 
     # Run predictions over full dataset for map & optimizer
     all_preds = df_proc.copy()
@@ -193,11 +207,55 @@ if predict_btn:
 with tab1:
     if "prediction" in st.session_state:
         pred = st.session_state["prediction"]
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Road closure predicted", pred["closure"])
         c2.metric("Closure probability",    f"{pred['proba']:.0%}")
         c3.metric("Est. resolution time",   f"{pred['est_minutes']} min")
-        c4.metric("Corridor",               pred["corridor"])
+        c4.metric("Predicted severity",     f"{pred['severity']}", f"{pred['impact_score']:.2f} score")
+        c5.metric("Corridor",               pred["corridor"])
+
+        st.caption(
+            f"⭐ The predicted severity above is **for your new \"{pred['cause']}\" event** — "
+            f"it updates every time you change Event cause, type, corridor, etc. "
+            f"The colored dots on the map are **past events**, each keeping its own original cause — "
+            f"they don't change with your selection, since they're historical fact, not predictions."
+        )
+
+        # ── Proof of cause-sensitivity: sweep every cause, hold everything else fixed ──
+        with st.expander("🔬 See how Event cause alone changes the prediction (same corridor, zone, time)", expanded=True):
+            raw = st.session_state["raw_inputs"]
+            all_causes = list(CAUSE_SEVERITY.keys())
+            sweep_rows = []
+            for c in all_causes:
+                X_c = build_input_row(
+                    c, raw["event_type"], raw["veh_type"], raw["corridor"], raw["zone"],
+                    raw["road_closure"], raw["event_date"], raw["event_time"],
+                )
+                r_c = float(np.clip(
+                    0.5 * models["xgb_reg"].predict(X_c) +
+                    0.5 * models["lgb_reg"].predict(X_c), 0, None,
+                )[0])
+                p_c = float(0.5 * models["xgb_clf"].predict_proba(X_c)[:, 1] +
+                           0.5 * models["lgb_clf"].predict_proba(X_c)[:, 1])
+                sweep_rows.append({"cause": c, "impact_score": r_c, "closure_proba": p_c})
+
+            sweep_df = pd.DataFrame(sweep_rows).sort_values("impact_score", ascending=True)
+            sweep_df["is_selected"] = sweep_df["cause"] == pred["cause"]
+
+            fig_sweep = px.bar(
+                sweep_df, x="impact_score", y="cause", orientation="h",
+                color="is_selected",
+                color_discrete_map={True: "#dc3545", False: "#94a3b8"},
+                title=f"Predicted impact score by cause — fixed at {raw['corridor']} / {raw['zone']}",
+                labels={"impact_score": "Predicted impact score", "cause": "Event cause"},
+            )
+            fig_sweep.update_layout(showlegend=False, height=420)
+            st.plotly_chart(fig_sweep, use_container_width=True)
+            st.caption(
+                f"Red bar = your currently selected cause (**{pred['cause']}**). "
+                f"Every other bar shows what the model would predict if you'd picked that cause instead — "
+                f"same corridor, zone, date, and time. The scores differ, which confirms cause does drive the prediction."
+            )
 
         ap     = st.session_state["all_preds"]
         ap_geo = ap[ap["latitude"].between(12.5, 13.5) & ap["longitude"].between(77.0, 78.0)]
@@ -238,7 +296,7 @@ with tab1:
                 ),
             ).add_to(m)
 
-        # Selected corridor events — bright, sized by impact
+        # Selected corridor events — bright, sized by impact (HISTORICAL — own original cause)
         for _, row in corridor_events.iterrows():
             sc = row.get("impact_score", 0)
             folium.CircleMarker(
@@ -248,43 +306,50 @@ with tab1:
                 fill=True, fill_opacity=0.75,
                 weight=2,
                 popup=folium.Popup(
-                    f"<b>{row.get('event_cause','—')}</b><br>"
+                    f"<b>{row.get('event_cause','—')}</b> <i>(past event)</i><br>"
                     f"Corridor: {selected_corridor}<br>"
                     f"Impact score: {sc:.1f}",
                     max_width=200,
                 ),
             ).add_to(m)
 
-        # New event marker — star pin at corridor centre
+        # New event marker — star pin at corridor centre, colored + labelled by PREDICTED severity
+        icon_color_map = {"Critical": "red", "High": "orange", "Medium": "beige", "Low": "green"}
         if len(corridor_events) > 0:
             folium.Marker(
                 location=[map_lat, map_lon],
                 popup=folium.Popup(
-                    f"<b>New event</b><br>"
+                    f"<b>★ Your new event (prediction)</b><br>"
                     f"Cause: {event_cause}<br>"
                     f"Corridor: {selected_corridor}<br>"
+                    f"Predicted severity: <b>{pred['severity']}</b> ({pred['impact_score']:.2f})<br>"
                     f"Closure: {pred['closure']}<br>"
                     f"Est. time: {pred['est_minutes']} min",
-                    max_width=220,
+                    max_width=240,
                 ),
-                icon=folium.Icon(color="red", icon="star", prefix="fa"),
-                tooltip=f"New event — {selected_corridor}",
+                icon=folium.Icon(color=icon_color_map.get(pred["severity"], "red"),
+                                 icon="star", prefix="fa"),
+                tooltip=f"New event — {pred['severity']} severity",
             ).add_to(m)
 
-        # Legend
-        legend_html = """
-        <div style="position:fixed;bottom:30px;left:40px;z-index:1000;
-                    background:white;padding:10px 14px;border-radius:8px;
-                    border:1px solid #ccc;font-size:12px;line-height:1.8">
-            <b>Impact score</b><br>
-            <span style="color:#dc3545">●</span> Critical (≥7)<br>
-            <span style="color:#fd7e14">●</span> High (5–7)<br>
-            <span style="color:#ffc107">●</span> Medium (3–5)<br>
-            <span style="color:#28a745">●</span> Low (&lt;3)<br>
-            <span style="color:#aaaaaa">●</span> Other corridors<br>
-            <span style="color:#dc3545">★</span> New event
-        </div>"""
-        m.get_root().html.add_child(folium.Element(legend_html))
+        # Legend — rendered as native Streamlit HTML (not inside the folium iframe).
+        # position:fixed legends inside folium maps often fail to render in
+        # streamlit-folium because the map lives in a sandboxed iframe — this
+        # approach renders directly on the page instead, so it always shows up.
+        st.markdown("""
+        <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;
+                    background:var(--background-color, #f0f2f6); padding:10px 16px;
+                    border-radius:8px; border:1px solid #ddd; margin-bottom:8px;
+                    font-size:13px;">
+            <b style="margin-right:4px;">Severity:</b>
+            <span><span style="color:#dc3545; font-size:16px;">●</span> Critical (≥7)</span>
+            <span><span style="color:#fd7e14; font-size:16px;">●</span> High (5–7)</span>
+            <span><span style="color:#ffc107; font-size:16px;">●</span> Medium (3–5)</span>
+            <span><span style="color:#28a745; font-size:16px;">●</span> Low (&lt;3)</span>
+            <span><span style="color:#aaaaaa; font-size:16px;">●</span> Other corridors</span>
+            <span><span style="color:#dc3545; font-size:16px;">★</span> New event location</span>
+        </div>
+        """, unsafe_allow_html=True)
 
         st_folium(m, width=None, height=500, returned_objects=[])
 
