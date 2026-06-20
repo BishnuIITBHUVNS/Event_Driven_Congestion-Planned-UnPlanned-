@@ -37,9 +37,8 @@ from sklearn.metrics import (
 from config import DATA_PROC, MODEL_DIR, FEATURE_COLS, TARGET_CLS, TARGET_REG
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
+#Helpers
+
 
 def print_section(title: str):
     print(f"\n{'─'*60}")
