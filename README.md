@@ -27,7 +27,7 @@ We re-targeted the classifier on `requires_road_closure` instead - a genuinely h
 On a held-out chronological test set (most recent 20% of events by date):
 
 - Road closure classification - F1 around 0.78, ROC-AUC around 0.72
-- Duration regression - R² around 0.81, MAPE around 35%
+- Duration regression - R² around 0.81, MAPE around 65%
 
 These aren't competition-winning numbers, and we're not going to pretend otherwise. The dataset has about 8,000 rows, with an 8 per cent positive class rate for the hardest target, which is a tough place to start. What we'd point to instead is the pipeline itself - the chronological split, the leakage catch, the constraint-based optimiser, the fact that every number in the dashboard is computed live rather than hardcoded.
 
